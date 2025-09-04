@@ -10,10 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   Upload, 
   FileText, 
-  Image, 
   Scan,
   CheckCircle,
-  AlertCircle,
   Clock,
   Globe,
   Languages,
@@ -43,9 +41,7 @@ interface ProcessedDocument {
 export function DocumentUpload() {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>([])
   const [processedDocuments, setProcessedDocuments] = useState<ProcessedDocument[]>([])
-  const [selectedDocument, setSelectedDocument] = useState<ProcessedDocument | null>(null)
 
   const simulateOCRProcessing = (file: File): Promise<ProcessedDocument> => {
     return new Promise((resolve) => {
@@ -147,7 +143,6 @@ License: MD-789012
 
       try {
         const fileArray = Array.from(files)
-        setUploadedFiles(prev => [...prev, ...fileArray.map(f => f.name)])
 
         for (const file of fileArray) {
           const processedDoc = await simulateOCRProcessing(file)
@@ -322,7 +317,6 @@ License: MD-789012
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => setSelectedDocument(doc)}
                       >
                         <Eye className="h-4 w-4 mr-1" />
                         View Details
