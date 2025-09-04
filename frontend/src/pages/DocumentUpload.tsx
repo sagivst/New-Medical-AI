@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -43,6 +43,7 @@ interface ProcessedDocument {
 export function DocumentUpload() {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
   const { processedDocuments, addProcessedDocument } = useMedical()
 
   const simulateOCRProcessing = (file: File): Promise<ProcessedDocument> => {
@@ -242,6 +243,39 @@ License: MD-${Math.floor(Math.random() * 900000) + 100000}
     navigator.clipboard.writeText(text)
   }
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+  }
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(true)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+    
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length > 0) {
+      files.forEach(file => {
+        if (file.type.includes('pdf') || file.type.includes('image') || file.name.endsWith('.tiff')) {
+          handleFileUpload({ target: { files: [file] } } as any)
+        }
+      })
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -267,7 +301,13 @@ License: MD-${Math.floor(Math.random() * 900000) + 100000}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+            <div 
+              className={`border-2 border-dashed ${isDragOver ? 'border-blue-500 bg-blue-50' : 'border-gray-300'} rounded-lg p-6 text-center transition-colors`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDragEnter={handleDragEnter}
+              onDrop={handleDrop}
+            >
               <Upload className="mx-auto h-12 w-12 text-gray-400" />
               <div className="mt-4">
                 <Label htmlFor="file-upload" className="cursor-pointer">

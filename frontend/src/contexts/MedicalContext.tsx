@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 
 interface ProcessedDocument {
   id: string
@@ -29,7 +29,14 @@ interface MedicalContextType {
 const MedicalContext = createContext<MedicalContextType | undefined>(undefined)
 
 export function MedicalProvider({ children }: { children: ReactNode }) {
-  const [processedDocuments, setProcessedDocuments] = useState<ProcessedDocument[]>([])
+  const [processedDocuments, setProcessedDocuments] = useState<ProcessedDocument[]>(() => {
+    const saved = localStorage.getItem('medicalDocuments')
+    return saved ? JSON.parse(saved) : []
+  })
+
+  useEffect(() => {
+    localStorage.setItem('medicalDocuments', JSON.stringify(processedDocuments))
+  }, [processedDocuments])
 
   const addProcessedDocument = (doc: ProcessedDocument) => {
     setProcessedDocuments(prev => [...prev, doc])

@@ -8,11 +8,17 @@ import {
   Shield, 
   CheckCircle,
   TrendingUp,
-  Globe
+  Globe,
+  BarChart3
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useMedical } from '@/contexts/MedicalContext'
 
 export function Dashboard() {
+  const { processedDocuments, getRecommendedSpecialty } = useMedical()
+  const hasProcessedDocuments = processedDocuments.length > 0
+  const recommendedSpecialty = getRecommendedSpecialty()
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -118,6 +124,14 @@ export function Dashboard() {
                 Upload Medical Documents
               </Link>
             </Button>
+            {hasProcessedDocuments && (
+              <Button asChild variant="outline" className="w-full justify-start">
+                <Link to="/documents">
+                  <BarChart3 className="mr-2 h-4 w-4" />
+                  Medical Analysis ({recommendedSpecialty || 'General'})
+                </Link>
+              </Button>
+            )}
             <Button asChild variant="outline" className="w-full justify-start">
               <Link to="/providers">
                 <Users className="mr-2 h-4 w-4" />
