@@ -1,10 +1,11 @@
-import React, { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useMedical } from '@/contexts/MedicalContext'
 import { 
   Search, 
   MapPin, 
@@ -37,8 +38,10 @@ export function ProviderSearch() {
   const [specialty, setSpecialty] = useState('')
   const [location, setLocation] = useState('')
   const [isSearching, setIsSearching] = useState(false)
+  const [filteredProviders, setFilteredProviders] = useState<Provider[]>([])
+  const { getRecommendedSpecialty, getRelevantConditions } = useMedical()
 
-  const mockProviders: Provider[] = [
+  const allProviders: Provider[] = [
     {
       id: '1',
       name: 'Dr. Sarah Johnson',
@@ -51,6 +54,19 @@ export function ProviderSearch() {
       phone: '(555) 123-4567',
       email: 'sjohnson@heartcenter.com',
       certifications: ['Board Certified Cardiologist', 'Interventional Cardiology']
+    },
+    {
+      id: '4',
+      name: 'Dr. Robert Kim',
+      specialty: 'Cardiology',
+      rating: 4.8,
+      distance: '3.2 miles',
+      availability: 'Next available: This week',
+      matchScore: 89,
+      location: 'Cardiovascular Institute',
+      phone: '(555) 456-7890',
+      email: 'rkim@cardioinst.com',
+      certifications: ['Board Certified Cardiologist', 'Heart Failure Specialist']
     },
     {
       id: '2',
@@ -66,6 +82,19 @@ export function ProviderSearch() {
       certifications: ['Board Certified Orthopedic Surgeon', 'Sports Medicine']
     },
     {
+      id: '5',
+      name: 'Dr. Jennifer Walsh',
+      specialty: 'Orthopedic Surgery',
+      rating: 4.7,
+      distance: '2.9 miles',
+      availability: 'Next available: Tomorrow',
+      matchScore: 91,
+      location: 'Joint & Spine Center',
+      phone: '(555) 567-8901',
+      email: 'jwalsh@jointspine.com',
+      certifications: ['Board Certified Orthopedic Surgeon', 'Joint Replacement']
+    },
+    {
       id: '3',
       name: 'Dr. Emily Rodriguez',
       specialty: 'Endocrinology',
@@ -77,12 +106,155 @@ export function ProviderSearch() {
       phone: '(555) 345-6789',
       email: 'erodriguez@endocenter.com',
       certifications: ['Board Certified Endocrinologist', 'Diabetes Specialist']
+    },
+    {
+      id: '6',
+      name: 'Dr. David Park',
+      specialty: 'Endocrinology',
+      rating: 4.6,
+      distance: '3.5 miles',
+      availability: 'Next available: Next week',
+      matchScore: 87,
+      location: 'Metabolic Health Clinic',
+      phone: '(555) 678-9012',
+      email: 'dpark@metabolic.com',
+      certifications: ['Board Certified Endocrinologist', 'Thyroid Specialist']
+    },
+    {
+      id: '7',
+      name: 'Dr. Amanda Wilson',
+      specialty: 'Dermatology',
+      rating: 4.8,
+      distance: '2.1 miles',
+      availability: 'Next available: Tomorrow',
+      matchScore: 93,
+      location: 'Skin Health Center',
+      phone: '(555) 789-0123',
+      email: 'awilson@skinhealth.com',
+      certifications: ['Board Certified Dermatologist', 'Mohs Surgery']
+    },
+    {
+      id: '8',
+      name: 'Dr. Lisa Thompson',
+      specialty: 'Dermatology',
+      rating: 4.7,
+      distance: '3.8 miles',
+      availability: 'Next available: This week',
+      matchScore: 89,
+      location: 'Advanced Dermatology',
+      phone: '(555) 890-1234',
+      email: 'lthompson@advderm.com',
+      certifications: ['Board Certified Dermatologist', 'Cosmetic Dermatology']
+    },
+    {
+      id: '9',
+      name: 'Dr. James Wilson',
+      specialty: 'Neurology',
+      rating: 4.9,
+      distance: '2.7 miles',
+      availability: 'Next available: Tomorrow',
+      matchScore: 94,
+      location: 'Neurological Associates',
+      phone: '(555) 901-2345',
+      email: 'jwilson@neuroassoc.com',
+      certifications: ['Board Certified Neurologist', 'Headache Specialist']
+    },
+    {
+      id: '10',
+      name: 'Dr. Maria Santos',
+      specialty: 'Neurology',
+      rating: 4.8,
+      distance: '4.3 miles',
+      availability: 'Next available: This week',
+      matchScore: 90,
+      location: 'Brain & Spine Institute',
+      phone: '(555) 012-3456',
+      email: 'msantos@brainspine.com',
+      certifications: ['Board Certified Neurologist', 'Epilepsy Specialist']
     }
   ]
 
+  useEffect(() => {
+    const recommendedSpecialty = getRecommendedSpecialty()
+    const relevantConditions = getRelevantConditions()
+    
+    if (recommendedSpecialty) {
+      setSpecialty(recommendedSpecialty)
+      
+      if (relevantConditions.length > 0) {
+        setSearchQuery(relevantConditions[0])
+      }
+    }
+    
+    filterProviders()
+  }, [getRecommendedSpecialty, getRelevantConditions])
+
+  const filterProviders = () => {
+    let filtered = allProviders
+    
+    if (specialty) {
+      filtered = filtered.filter(provider => {
+        const providerSpecialty = provider.specialty.toLowerCase()
+        const selectedSpecialty = specialty.toLowerCase()
+        
+        if (selectedSpecialty === 'orthopedics' && providerSpecialty.includes('orthopedic')) {
+          return true
+        }
+        if (selectedSpecialty === 'cardiology' && providerSpecialty.includes('cardiology')) {
+          return true
+        }
+        if (selectedSpecialty === 'endocrinology' && providerSpecialty.includes('endocrinology')) {
+          return true
+        }
+        if (selectedSpecialty === 'neurology' && providerSpecialty.includes('neurology')) {
+          return true
+        }
+        if (selectedSpecialty === 'dermatology' && providerSpecialty.includes('dermatology')) {
+          return true
+        }
+        
+        return providerSpecialty.includes(selectedSpecialty)
+      })
+    }
+    
+    if (searchQuery) {
+      filtered = filtered.filter(provider => 
+        provider.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        provider.specialty.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        provider.certifications.some(cert => 
+          cert.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      )
+    }
+    
+    const recommendedSpecialty = getRecommendedSpecialty()
+    if (recommendedSpecialty) {
+      filtered = filtered.map(provider => {
+        const providerSpecialty = provider.specialty.toLowerCase()
+        const recommended = recommendedSpecialty.toLowerCase()
+        
+        if ((recommended === 'orthopedics' && providerSpecialty.includes('orthopedic')) ||
+            (recommended === 'cardiology' && providerSpecialty.includes('cardiology')) ||
+            (recommended === 'endocrinology' && providerSpecialty.includes('endocrinology')) ||
+            (recommended === 'neurology' && providerSpecialty.includes('neurology')) ||
+            (recommended === 'dermatology' && providerSpecialty.includes('dermatology'))) {
+          return { ...provider, matchScore: Math.min(provider.matchScore + 10, 99) }
+        }
+        return provider
+      })
+    }
+    
+    filtered.sort((a, b) => b.matchScore - a.matchScore)
+    
+    setFilteredProviders(filtered)
+  }
+
   const handleSearch = () => {
     setIsSearching(true)
-    setTimeout(() => setIsSearching(false), 1500)
+    setTimeout(() => {
+      filterProviders()
+      setIsSearching(false)
+    }, 1500)
   }
 
   return (
@@ -166,14 +338,21 @@ export function ProviderSearch() {
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Recommended Providers</h2>
+          <div>
+            <h2 className="text-xl font-semibold">Recommended Providers</h2>
+            {getRecommendedSpecialty() && (
+              <p className="text-sm text-blue-600 mt-1">
+                🤖 AI-filtered based on your processed medical documents ({getRecommendedSpecialty()})
+              </p>
+            )}
+          </div>
           <Button variant="outline" size="sm">
             <Filter className="mr-2 h-4 w-4" />
             Filters
           </Button>
         </div>
 
-        {mockProviders.map((provider) => (
+        {(filteredProviders.length > 0 ? filteredProviders : allProviders.slice(0, 3)).map((provider) => (
           <Card key={provider.id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-start justify-between">

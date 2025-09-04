@@ -6,9 +6,7 @@ import {
   FileText, 
   Users, 
   Shield, 
-  Clock,
   CheckCircle,
-  AlertCircle,
   TrendingUp,
   Globe
 } from 'lucide-react'

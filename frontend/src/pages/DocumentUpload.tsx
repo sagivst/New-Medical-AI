@@ -19,6 +19,7 @@ import {
   Download,
   Copy
 } from 'lucide-react'
+import { useMedical } from '@/contexts/MedicalContext'
 
 interface ProcessedDocument {
   id: string
@@ -36,49 +37,129 @@ interface ProcessedDocument {
   fhirData: any
   confidence: number
   language: string
+  specialty?: string
 }
 
 export function DocumentUpload() {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [processedDocuments, setProcessedDocuments] = useState<ProcessedDocument[]>([])
+  const { processedDocuments, addProcessedDocument } = useMedical()
 
   const simulateOCRProcessing = (file: File): Promise<ProcessedDocument> => {
     return new Promise((resolve) => {
       setTimeout(() => {
+        const scenarios = [
+          {
+            specialty: 'Cardiology',
+            patient: 'John Doe',
+            dob: '01/15/1980',
+            mrn: 'MRN-123456',
+            complaint: 'chest pain and shortness of breath',
+            history: '45-year-old male with a history of hypertension and diabetes mellitus type 2 presents with acute onset chest pain that started 2 hours ago. Pain is described as crushing, substernal, radiating to left arm. Associated with diaphoresis and nausea.',
+            medications: ['Metformin 500mg twice daily', 'Lisinopril 10mg once daily', 'Aspirin 81mg once daily'],
+            conditions: ['Hypertension', 'Diabetes mellitus type 2', 'Acute coronary syndrome'],
+            procedures: ['ECG', 'Cardiac enzymes', 'Chest X-ray'],
+            plan: 'Acute coronary syndrome - rule out myocardial infarction\n   - Order ECG, cardiac enzymes, chest X-ray\n   - Start heparin protocol\n   - Cardiology consultation',
+            followup: 'Patient to follow up with cardiology within 1 week.',
+            doctor: 'Dr. Sarah Johnson, MD\nInternal Medicine'
+          },
+          {
+            specialty: 'Orthopedics',
+            patient: 'Maria Garcia',
+            dob: '03/22/1985',
+            mrn: 'MRN-789012',
+            complaint: 'knee pain and difficulty walking',
+            history: '38-year-old female presents with progressive right knee pain for 3 weeks following a fall while jogging. Pain is worse with weight bearing and stairs. No previous knee injuries.',
+            medications: ['Ibuprofen 400mg as needed', 'Acetaminophen 500mg twice daily'],
+            conditions: ['Right knee contusion', 'Possible meniscal tear', 'Joint effusion'],
+            procedures: ['Knee X-ray', 'MRI knee', 'Physical examination'],
+            plan: 'Right knee injury - rule out meniscal tear\n   - Order MRI of right knee\n   - Physical therapy referral\n   - Orthopedic surgery consultation',
+            followup: 'Patient to follow up with orthopedics in 2 weeks.',
+            doctor: 'Dr. Michael Chen, MD\nOrthopedic Surgery'
+          },
+          {
+            specialty: 'Endocrinology',
+            patient: 'Robert Smith',
+            dob: '07/10/1972',
+            mrn: 'MRN-345678',
+            complaint: 'increased thirst, frequent urination, and fatigue',
+            history: '51-year-old male presents with 2-month history of polyuria, polydipsia, and fatigue. Family history of diabetes mellitus type 2. Recent weight loss of 15 pounds.',
+            medications: ['Multivitamin daily'],
+            conditions: ['Diabetes mellitus type 2 (newly diagnosed)', 'Hyperglycemia', 'Metabolic syndrome'],
+            procedures: ['HbA1c', 'Fasting glucose', 'Lipid panel', 'Comprehensive metabolic panel'],
+            plan: 'Newly diagnosed diabetes mellitus type 2\n   - Start metformin 500mg twice daily\n   - Diabetes education referral\n   - Endocrinology consultation',
+            followup: 'Patient to follow up with endocrinology in 1 month.',
+            doctor: 'Dr. Emily Rodriguez, MD\nEndocrinology'
+          },
+          {
+            specialty: 'Dermatology',
+            patient: 'Lisa Johnson',
+            dob: '11/05/1990',
+            mrn: 'MRN-567890',
+            complaint: 'skin rash and itching',
+            history: '33-year-old female presents with 1-week history of pruritic rash on arms and legs. No known allergies. Recently started new laundry detergent.',
+            medications: ['Benadryl 25mg as needed', 'Hydrocortisone cream 1% topical'],
+            conditions: ['Contact dermatitis', 'Allergic reaction', 'Eczematous dermatitis'],
+            procedures: ['Skin examination', 'Patch testing', 'Allergy consultation'],
+            plan: 'Contact dermatitis - likely allergic reaction\n   - Discontinue new laundry detergent\n   - Continue topical hydrocortisone\n   - Dermatology follow-up if no improvement',
+            followup: 'Patient to follow up with dermatology in 2 weeks if symptoms persist.',
+            doctor: 'Dr. Amanda Wilson, MD\nDermatology'
+          },
+          {
+            specialty: 'Neurology',
+            patient: 'David Brown',
+            dob: '09/18/1965',
+            mrn: 'MRN-234567',
+            complaint: 'headaches and dizziness',
+            history: '58-year-old male presents with 3-week history of severe headaches and intermittent dizziness. Headaches are worse in the morning and associated with nausea.',
+            medications: ['Sumatriptan 50mg as needed', 'Propranolol 40mg twice daily'],
+            conditions: ['Migraine headaches', 'Tension headaches', 'Rule out secondary headache'],
+            procedures: ['Brain MRI', 'CT head', 'Neurological examination'],
+            plan: 'Chronic headaches - rule out secondary causes\n   - Order brain MRI with contrast\n   - Neurology consultation\n   - Headache diary',
+            followup: 'Patient to follow up with neurology in 1 week.',
+            doctor: 'Dr. James Wilson, MD\nNeurology'
+          }
+        ]
+
+        let selectedScenario = scenarios[0] // default to cardiology
+        const fileName = file.name.toLowerCase()
+        
+        if (fileName.includes('ortho') || fileName.includes('knee') || fileName.includes('bone')) {
+          selectedScenario = scenarios[1]
+        } else if (fileName.includes('diabetes') || fileName.includes('sugar') || fileName.includes('endocr')) {
+          selectedScenario = scenarios[2]
+        } else if (fileName.includes('skin') || fileName.includes('rash') || fileName.includes('derm')) {
+          selectedScenario = scenarios[3]
+        } else if (fileName.includes('head') || fileName.includes('neuro') || fileName.includes('brain')) {
+          selectedScenario = scenarios[4]
+        } else {
+          selectedScenario = scenarios[Math.floor(Math.random() * scenarios.length)]
+        }
+
         const mockExtractedText = `
 MEDICAL RECORD - ${file.name.toUpperCase()}
 
-Patient: John Doe
-Date of Birth: 01/15/1980
-Medical Record Number: MRN-123456
+Patient: ${selectedScenario.patient}
+Date of Birth: ${selectedScenario.dob}
+Medical Record Number: ${selectedScenario.mrn}
 
 CHIEF COMPLAINT:
-Patient presents with chest pain and shortness of breath.
+Patient presents with ${selectedScenario.complaint}.
 
 HISTORY OF PRESENT ILLNESS:
-45-year-old male with a history of hypertension and diabetes mellitus type 2 presents with acute onset chest pain that started 2 hours ago. Pain is described as crushing, substernal, radiating to left arm. Associated with diaphoresis and nausea.
+${selectedScenario.history}
 
 MEDICATIONS:
-- Metformin 500mg twice daily
-- Lisinopril 10mg once daily
-- Aspirin 81mg once daily
+${selectedScenario.medications.map(med => `- ${med}`).join('\n')}
 
 ASSESSMENT AND PLAN:
-1. Acute coronary syndrome - rule out myocardial infarction
-   - Order ECG, cardiac enzymes, chest X-ray
-   - Start heparin protocol
-   - Cardiology consultation
-
-2. Diabetes mellitus type 2 - continue current medications
-3. Hypertension - well controlled on current regimen
+1. ${selectedScenario.plan}
 
 FOLLOW-UP:
-Patient to follow up with cardiology within 1 week.
+${selectedScenario.followup}
 
-Dr. Sarah Johnson, MD
-Internal Medicine
-License: MD-789012
+${selectedScenario.doctor}
+License: MD-${Math.floor(Math.random() * 900000) + 100000}
         `.trim()
 
         const processedDoc: ProcessedDocument = {
@@ -89,10 +170,10 @@ License: MD-789012
           uploadDate: new Date().toLocaleDateString(),
           extractedText: mockExtractedText,
           medicalEntities: {
-            medications: ['Metformin 500mg', 'Lisinopril 10mg', 'Aspirin 81mg'],
-            conditions: ['Hypertension', 'Diabetes mellitus type 2', 'Acute coronary syndrome'],
-            procedures: ['ECG', 'Cardiac enzymes', 'Chest X-ray'],
-            dates: ['01/15/1980', '2 hours ago', '1 week']
+            medications: selectedScenario.medications,
+            conditions: selectedScenario.conditions,
+            procedures: selectedScenario.procedures,
+            dates: [selectedScenario.dob, 'Today', '1-2 weeks']
           },
           fhirData: {
             resourceType: 'DocumentReference',
@@ -117,7 +198,8 @@ License: MD-789012
             }]
           },
           confidence: Math.floor(Math.random() * 10) + 90,
-          language: 'en'
+          language: 'en',
+          specialty: selectedScenario.specialty
         }
 
         resolve(processedDoc)
@@ -146,7 +228,7 @@ License: MD-789012
 
         for (const file of fileArray) {
           const processedDoc = await simulateOCRProcessing(file)
-          setProcessedDocuments(prev => [...prev, processedDoc])
+          addProcessedDocument(processedDoc)
         }
       } catch (error) {
         console.error('Error processing files:', error)
