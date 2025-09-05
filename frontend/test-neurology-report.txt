@@ -1,0 +1,23 @@
+Patient: John Smith
+Date: 2024-01-15
+Chief Complaint: Severe headaches and dizziness for the past 2 weeks
+
+History of Present Illness:
+The patient reports experiencing severe headaches that started approximately 2 weeks ago. The headaches are described as throbbing and are accompanied by dizziness, especially when standing up quickly. The patient also reports some visual disturbances and occasional nausea.
+
+Past Medical History:
+- Hypertension (controlled with medication)
+- No previous history of migraines or neurological disorders
+
+Current Medications:
+- Lisinopril 10mg daily for blood pressure
+- Ibuprofen as needed for headaches
+
+Assessment and Plan:
+Given the patient's symptoms of severe headaches, dizziness, and visual disturbances, recommend:
+1. Neurological evaluation
+2. Brain MRI to rule out structural abnormalities
+3. Blood pressure monitoring
+4. Follow-up with neurology specialist within 1 week
+
+Diagnosis: Severe headaches with neurological symptoms - requires neurology consultation

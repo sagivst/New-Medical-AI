@@ -1,0 +1,34 @@
+Patient: Jane Doe
+Date: 2024-09-04
+Chief Complaint: Chest pain
+
+History of Present Illness:
+Patient reports chest pain for 2 hours, described as crushing substernal pain radiating to left arm. Associated with shortness of breath and diaphoresis.
+
+Past Medical History:
+- Hypertension
+- Diabetes mellitus type 2
+- Hyperlipidemia
+
+Current Medications:
+- Aspirin 81mg daily
+- Lisinopril 10mg daily
+- Metformin 500mg twice daily
+- Atorvastatin 20mg daily
+
+Physical Examination:
+- Blood pressure: 160/95 mmHg
+- Heart rate: 110 bpm
+- Respiratory rate: 22/min
+- Oxygen saturation: 94% on room air
+
+Assessment and Plan:
+Given the patient's symptoms and risk factors, suspect acute coronary syndrome.
+1. EKG - shows ST elevation in leads II, III, aVF
+2. Cardiac enzymes - troponin elevated at 2.5 ng/mL
+3. Cardiology consult for urgent cardiac catheterization
+4. Start dual antiplatelet therapy
+5. Beta blocker and ACE inhibitor optimization
+
+Diagnosis: ST-elevation myocardial infarction (STEMI)
+Disposition: Transfer to cardiac catheterization lab
