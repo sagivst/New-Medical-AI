@@ -20,6 +20,10 @@ import {
   Copy
 } from 'lucide-react'
 import { useMedical } from '@/contexts/MedicalContext'
+import * as pdfjsLib from 'pdfjs-dist'
+import Tesseract from 'tesseract.js'
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`
 
 interface ProcessedDocument {
   id: string
@@ -46,166 +50,200 @@ export function DocumentUpload() {
   const [isDragOver, setIsDragOver] = useState(false)
   const { processedDocuments, addProcessedDocument } = useMedical()
 
-  const simulateOCRProcessing = (file: File): Promise<ProcessedDocument> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const scenarios = [
-          {
-            specialty: 'Cardiology',
-            patient: 'John Doe',
-            dob: '01/15/1980',
-            mrn: 'MRN-123456',
-            complaint: 'chest pain and shortness of breath',
-            history: '45-year-old male with a history of hypertension and diabetes mellitus type 2 presents with acute onset chest pain that started 2 hours ago. Pain is described as crushing, substernal, radiating to left arm. Associated with diaphoresis and nausea.',
-            medications: ['Metformin 500mg twice daily', 'Lisinopril 10mg once daily', 'Aspirin 81mg once daily'],
-            conditions: ['Hypertension', 'Diabetes mellitus type 2', 'Acute coronary syndrome'],
-            procedures: ['ECG', 'Cardiac enzymes', 'Chest X-ray'],
-            plan: 'Acute coronary syndrome - rule out myocardial infarction\n   - Order ECG, cardiac enzymes, chest X-ray\n   - Start heparin protocol\n   - Cardiology consultation',
-            followup: 'Patient to follow up with cardiology within 1 week.',
-            doctor: 'Dr. Sarah Johnson, MD\nInternal Medicine'
-          },
-          {
-            specialty: 'Orthopedics',
-            patient: 'Maria Garcia',
-            dob: '03/22/1985',
-            mrn: 'MRN-789012',
-            complaint: 'knee pain and difficulty walking',
-            history: '38-year-old female presents with progressive right knee pain for 3 weeks following a fall while jogging. Pain is worse with weight bearing and stairs. No previous knee injuries.',
-            medications: ['Ibuprofen 400mg as needed', 'Acetaminophen 500mg twice daily'],
-            conditions: ['Right knee contusion', 'Possible meniscal tear', 'Joint effusion'],
-            procedures: ['Knee X-ray', 'MRI knee', 'Physical examination'],
-            plan: 'Right knee injury - rule out meniscal tear\n   - Order MRI of right knee\n   - Physical therapy referral\n   - Orthopedic surgery consultation',
-            followup: 'Patient to follow up with orthopedics in 2 weeks.',
-            doctor: 'Dr. Michael Chen, MD\nOrthopedic Surgery'
-          },
-          {
-            specialty: 'Endocrinology',
-            patient: 'Robert Smith',
-            dob: '07/10/1972',
-            mrn: 'MRN-345678',
-            complaint: 'increased thirst, frequent urination, and fatigue',
-            history: '51-year-old male presents with 2-month history of polyuria, polydipsia, and fatigue. Family history of diabetes mellitus type 2. Recent weight loss of 15 pounds.',
-            medications: ['Multivitamin daily'],
-            conditions: ['Diabetes mellitus type 2 (newly diagnosed)', 'Hyperglycemia', 'Metabolic syndrome'],
-            procedures: ['HbA1c', 'Fasting glucose', 'Lipid panel', 'Comprehensive metabolic panel'],
-            plan: 'Newly diagnosed diabetes mellitus type 2\n   - Start metformin 500mg twice daily\n   - Diabetes education referral\n   - Endocrinology consultation',
-            followup: 'Patient to follow up with endocrinology in 1 month.',
-            doctor: 'Dr. Emily Rodriguez, MD\nEndocrinology'
-          },
-          {
-            specialty: 'Dermatology',
-            patient: 'Lisa Johnson',
-            dob: '11/05/1990',
-            mrn: 'MRN-567890',
-            complaint: 'skin rash and itching',
-            history: '33-year-old female presents with 1-week history of pruritic rash on arms and legs. No known allergies. Recently started new laundry detergent.',
-            medications: ['Benadryl 25mg as needed', 'Hydrocortisone cream 1% topical'],
-            conditions: ['Contact dermatitis', 'Allergic reaction', 'Eczematous dermatitis'],
-            procedures: ['Skin examination', 'Patch testing', 'Allergy consultation'],
-            plan: 'Contact dermatitis - likely allergic reaction\n   - Discontinue new laundry detergent\n   - Continue topical hydrocortisone\n   - Dermatology follow-up if no improvement',
-            followup: 'Patient to follow up with dermatology in 2 weeks if symptoms persist.',
-            doctor: 'Dr. Amanda Wilson, MD\nDermatology'
-          },
-          {
-            specialty: 'Neurology',
-            patient: 'David Brown',
-            dob: '09/18/1965',
-            mrn: 'MRN-234567',
-            complaint: 'headaches and dizziness',
-            history: '58-year-old male presents with 3-week history of severe headaches and intermittent dizziness. Headaches are worse in the morning and associated with nausea.',
-            medications: ['Sumatriptan 50mg as needed', 'Propranolol 40mg twice daily'],
-            conditions: ['Migraine headaches', 'Tension headaches', 'Rule out secondary headache'],
-            procedures: ['Brain MRI', 'CT head', 'Neurological examination'],
-            plan: 'Chronic headaches - rule out secondary causes\n   - Order brain MRI with contrast\n   - Neurology consultation\n   - Headache diary',
-            followup: 'Patient to follow up with neurology in 1 week.',
-            doctor: 'Dr. James Wilson, MD\nNeurology'
-          }
-        ]
-
-        let selectedScenario = scenarios[0] // default to cardiology
-        const fileName = file.name.toLowerCase()
+  const processDocument = async (file: File): Promise<ProcessedDocument> => {
+    try {
+      let extractedText = ''
+      let confidence = 95
+      
+      if (file.type === 'application/pdf') {
+        const arrayBuffer = await file.arrayBuffer()
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+        let fullText = ''
         
-        if (fileName.includes('ortho') || fileName.includes('knee') || fileName.includes('bone')) {
-          selectedScenario = scenarios[1]
-        } else if (fileName.includes('diabetes') || fileName.includes('sugar') || fileName.includes('endocr')) {
-          selectedScenario = scenarios[2]
-        } else if (fileName.includes('skin') || fileName.includes('rash') || fileName.includes('derm')) {
-          selectedScenario = scenarios[3]
-        } else if (fileName.includes('head') || fileName.includes('neuro') || fileName.includes('brain')) {
-          selectedScenario = scenarios[4]
-        } else {
-          selectedScenario = scenarios[Math.floor(Math.random() * scenarios.length)]
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i)
+          const textContent = await page.getTextContent()
+          const pageText = textContent.items.map((item: any) => item.str).join(' ')
+          fullText += pageText + '\n'
         }
+        
+        extractedText = fullText.trim()
+        confidence = 95
+      } else if (file.type.startsWith('image/')) {
+        const result = await Tesseract.recognize(file, 'eng', {
+          logger: m => console.log(m)
+        })
+        extractedText = result.data.text
+        confidence = Math.round(result.data.confidence)
+      } else if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+        const text = await file.text()
+        extractedText = text
+        confidence = 100
+      } else {
+        throw new Error(`Unsupported file type: ${file.type}`)
+      }
 
-        const mockExtractedText = `
-MEDICAL RECORD - ${file.name.toUpperCase()}
+      const medicalEntities = extractMedicalEntities(extractedText)
+      const specialty = determineSpecialty(extractedText, medicalEntities)
 
-Patient: ${selectedScenario.patient}
-Date of Birth: ${selectedScenario.dob}
-Medical Record Number: ${selectedScenario.mrn}
+      const processedDoc: ProcessedDocument = {
+        id: Date.now().toString(),
+        filename: file.name,
+        fileType: file.type || 'application/pdf',
+        fileSize: (file.size / 1024).toFixed(1) + ' KB',
+        uploadDate: new Date().toLocaleDateString(),
+        extractedText: extractedText,
+        medicalEntities: medicalEntities,
+        fhirData: generateFHIRData(file, medicalEntities),
+        confidence: confidence,
+        language: 'en',
+        specialty: specialty
+      }
 
-CHIEF COMPLAINT:
-Patient presents with ${selectedScenario.complaint}.
+      return processedDoc
+    } catch (error) {
+      console.error('Error processing document:', error)
+      return {
+        id: Date.now().toString(),
+        filename: file.name,
+        fileType: file.type || 'application/pdf',
+        fileSize: (file.size / 1024).toFixed(1) + ' KB',
+        uploadDate: new Date().toLocaleDateString(),
+        extractedText: `Error processing document: ${error instanceof Error ? error.message : String(error)}`,
+        medicalEntities: {
+          medications: [],
+          conditions: [],
+          procedures: [],
+          dates: []
+        },
+        fhirData: generateFHIRData(file, { medications: [], conditions: [], procedures: [], dates: [] }),
+        confidence: 0,
+        language: 'en',
+        specialty: undefined
+      }
+    }
+  }
 
-HISTORY OF PRESENT ILLNESS:
-${selectedScenario.history}
+  const extractMedicalEntities = (text: string) => {
+    const medications: string[] = []
+    const conditions: string[] = []
+    const procedures: string[] = []
+    const dates: string[] = []
 
-MEDICATIONS:
-${selectedScenario.medications.map(med => `- ${med}`).join('\n')}
-
-ASSESSMENT AND PLAN:
-1. ${selectedScenario.plan}
-
-FOLLOW-UP:
-${selectedScenario.followup}
-
-${selectedScenario.doctor}
-License: MD-${Math.floor(Math.random() * 900000) + 100000}
-        `.trim()
-
-        const processedDoc: ProcessedDocument = {
-          id: Date.now().toString(),
-          filename: file.name,
-          fileType: file.type || 'application/pdf',
-          fileSize: (file.size / 1024).toFixed(1) + ' KB',
-          uploadDate: new Date().toLocaleDateString(),
-          extractedText: mockExtractedText,
-          medicalEntities: {
-            medications: selectedScenario.medications,
-            conditions: selectedScenario.conditions,
-            procedures: selectedScenario.procedures,
-            dates: [selectedScenario.dob, 'Today', '1-2 weeks']
-          },
-          fhirData: {
-            resourceType: 'DocumentReference',
-            id: Date.now().toString(),
-            status: 'current',
-            type: {
-              coding: [{
-                system: 'http://loinc.org',
-                code: '11488-4',
-                display: 'Consult note'
-              }]
-            },
-            subject: {
-              reference: 'Patient/123456'
-            },
-            date: new Date().toISOString(),
-            content: [{
-              attachment: {
-                contentType: file.type || 'application/pdf',
-                title: file.name
-              }
-            }]
-          },
-          confidence: Math.floor(Math.random() * 10) + 90,
-          language: 'en',
-          specialty: selectedScenario.specialty
-        }
-
-        resolve(processedDoc)
-      }, 2000)
+    const medicationPatterns = [
+      /(\w+)\s*\d+\s*mg/gi,
+      /(\w+)\s*\d+\s*mcg/gi,
+      /(aspirin|ibuprofen|acetaminophen|metformin|lisinopril|atorvastatin|omeprazole|levothyroxine|amlodipine|metoprolol|hydrochlorothiazide|simvastatin|losartan|gabapentin|sertraline|montelukast|furosemide|warfarin|prednisone|tramadol|sumatriptan|propranolol|glipizide|benadryl|hydrocortisone)/gi
+    ]
+    
+    medicationPatterns.forEach(pattern => {
+      const matches = text.match(pattern)
+      if (matches) {
+        medications.push(...matches.map(m => m.trim()))
+      }
     })
+
+    const conditionPatterns = [
+      /(diabetes|hypertension|depression|anxiety|arthritis|asthma|copd|heart disease|stroke|cancer|migraine|headache|back pain|chest pain|shortness of breath|dizziness|nausea|fatigue|fever|cough|rash|allergic reaction|fracture|sprain|infection|acute coronary syndrome|orthostatic hypotension|photophobia|contact dermatitis|hypothyroidism|acl tear|knee pain|skin rash)/gi
+    ]
+    
+    conditionPatterns.forEach(pattern => {
+      const matches = text.match(pattern)
+      if (matches) {
+        conditions.push(...matches.map(m => m.trim()))
+      }
+    })
+
+    const procedurePatterns = [
+      /(x-ray|mri|ct scan|ultrasound|blood test|ecg|ekg|biopsy|surgery|colonoscopy|endoscopy|mammogram|physical examination|consultation|cardiac enzymes|neurological examination|orthopedic consultation|dermatological examination|allergy testing|hba1c test|tsh levels)/gi
+    ]
+    
+    procedurePatterns.forEach(pattern => {
+      const matches = text.match(pattern)
+      if (matches) {
+        procedures.push(...matches.map(m => m.trim()))
+      }
+    })
+
+    const datePatterns = [
+      /\d{1,2}\/\d{1,2}\/\d{4}/g,
+      /\d{1,2}-\d{1,2}-\d{4}/g,
+      /(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2},?\s+\d{4}/gi
+    ]
+    
+    datePatterns.forEach(pattern => {
+      const matches = text.match(pattern)
+      if (matches) {
+        dates.push(...matches.map(m => m.trim()))
+      }
+    })
+
+    return {
+      medications: [...new Set(medications)],
+      conditions: [...new Set(conditions)],
+      procedures: [...new Set(procedures)],
+      dates: [...new Set(dates)]
+    }
+  }
+
+  const determineSpecialty = (text: string, entities: any): string | undefined => {
+    const textLower = text.toLowerCase()
+    const allConditions = entities.conditions.join(' ').toLowerCase()
+    
+    if (textLower.includes('headache') || textLower.includes('migraine') || textLower.includes('dizziness') || 
+        textLower.includes('seizure') || textLower.includes('stroke') || textLower.includes('brain') ||
+        textLower.includes('neurolog') || allConditions.includes('headache') || allConditions.includes('migraine')) {
+      return 'Neurology'
+    }
+    
+    if (textLower.includes('heart') || textLower.includes('cardiac') || textLower.includes('chest pain') ||
+        textLower.includes('hypertension') || textLower.includes('blood pressure') || textLower.includes('ecg') ||
+        allConditions.includes('heart') || allConditions.includes('hypertension')) {
+      return 'Cardiology'
+    }
+    
+    if (textLower.includes('fracture') || textLower.includes('bone') || textLower.includes('joint') ||
+        textLower.includes('knee') || textLower.includes('back pain') || textLower.includes('arthritis') ||
+        allConditions.includes('fracture') || allConditions.includes('arthritis')) {
+      return 'Orthopedics'
+    }
+    
+    if (textLower.includes('rash') || textLower.includes('skin') || textLower.includes('dermat') ||
+        textLower.includes('allergic reaction') || allConditions.includes('rash')) {
+      return 'Dermatology'
+    }
+    
+    if (textLower.includes('diabetes') || textLower.includes('thyroid') || textLower.includes('hormone') ||
+        textLower.includes('endocrin') || allConditions.includes('diabetes')) {
+      return 'Endocrinology'
+    }
+    
+    return undefined
+  }
+
+  const generateFHIRData = (file: File, _entities: any) => {
+    return {
+      resourceType: 'DocumentReference',
+      id: Date.now().toString(),
+      status: 'current',
+      type: {
+        coding: [{
+          system: 'http://loinc.org',
+          code: '11488-4',
+          display: 'Consult note'
+        }]
+      },
+      subject: {
+        reference: 'Patient/123456'
+      },
+      date: new Date().toISOString(),
+      content: [{
+        attachment: {
+          contentType: file.type || 'application/pdf',
+          title: file.name
+        }
+      }]
+    }
   }
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -228,7 +266,7 @@ License: MD-${Math.floor(Math.random() * 900000) + 100000}
         const fileArray = Array.from(files)
 
         for (const file of fileArray) {
-          const processedDoc = await simulateOCRProcessing(file)
+          const processedDoc = await processDocument(file)
           addProcessedDocument(processedDoc)
         }
       } catch (error) {
