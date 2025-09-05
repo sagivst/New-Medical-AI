@@ -17,6 +17,7 @@ interface ProcessedDocument {
   confidence: number
   language: string
   specialty?: string
+  medicalSummary?: string
 }
 
 interface MedicalContextType {

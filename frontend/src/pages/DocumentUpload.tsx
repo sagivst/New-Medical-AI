@@ -23,7 +23,10 @@ import { useMedical } from '@/contexts/MedicalContext'
 import * as pdfjsLib from 'pdfjs-dist'
 import Tesseract from 'tesseract.js'
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url
+).toString()
 
 interface ProcessedDocument {
   id: string
@@ -42,6 +45,7 @@ interface ProcessedDocument {
   confidence: number
   language: string
   specialty?: string
+  medicalSummary?: string
 }
 
 export function DocumentUpload() {
@@ -97,7 +101,8 @@ export function DocumentUpload() {
         fhirData: generateFHIRData(file, medicalEntities),
         confidence: confidence,
         language: 'en',
-        specialty: specialty
+        specialty: specialty,
+        medicalSummary: generateMedicalSummary(extractedText, medicalEntities, specialty)
       }
 
       return processedDoc
@@ -221,6 +226,69 @@ export function DocumentUpload() {
     return undefined
   }
 
+  const generateMedicalSummary = (_text: string, entities: any, specialty?: string): string => {
+    const { medications, conditions, procedures, dates } = entities
+    
+    let summary = "## Medical Analysis Summary\n\n"
+    
+    if (specialty) {
+      summary += `**Recommended Specialty:** ${specialty}\n\n`
+    }
+    
+    if (conditions.length > 0) {
+      summary += `**Primary Conditions:** ${conditions.join(', ')}\n\n`
+      
+      const highRiskConditions = conditions.filter((c: string) => 
+        c.toLowerCase().includes('heart') || 
+        c.toLowerCase().includes('stroke') || 
+        c.toLowerCase().includes('diabetes')
+      )
+      if (highRiskConditions.length > 0) {
+        summary += `**Risk Assessment:** High priority conditions detected: ${highRiskConditions.join(', ')}\n\n`
+      }
+    }
+    
+    if (medications.length > 0) {
+      summary += `**Current Medications:** ${medications.join(', ')}\n\n`
+      
+      if (medications.length > 1) {
+        summary += `**Note:** Multiple medications detected - recommend pharmacist review for interactions\n\n`
+      }
+    }
+    
+    if (procedures.length > 0) {
+      summary += `**Procedures/Tests:** ${procedures.join(', ')}\n\n`
+    }
+    
+    if (dates.length > 0) {
+      summary += `**Important Dates:** ${dates.join(', ')}\n\n`
+    }
+    
+    if (specialty) {
+      switch (specialty.toLowerCase()) {
+        case 'neurology':
+          summary += `**Clinical Recommendations:**\n- Monitor neurological symptoms\n- Consider imaging if headaches persist\n- Follow up with neurology specialist\n\n`
+          break
+        case 'cardiology':
+          summary += `**Clinical Recommendations:**\n- Monitor blood pressure regularly\n- Consider cardiac enzymes if chest pain\n- Lifestyle modifications for heart health\n\n`
+          break
+        case 'orthopedics':
+          summary += `**Clinical Recommendations:**\n- Physical therapy evaluation\n- Pain management strategies\n- Activity modification as needed\n\n`
+          break
+        case 'dermatology':
+          summary += `**Clinical Recommendations:**\n- Avoid known allergens\n- Topical treatment as prescribed\n- Monitor for skin changes\n\n`
+          break
+        case 'endocrinology':
+          summary += `**Clinical Recommendations:**\n- Regular glucose monitoring\n- Dietary consultation\n- Medication compliance important\n\n`
+          break
+      }
+    }
+    
+    summary += `**Next Steps:** Schedule follow-up appointment with ${specialty || 'primary care'} provider for comprehensive evaluation.`
+    
+    return summary
+  }
+
   const generateFHIRData = (file: File, _entities: any) => {
     return {
       resourceType: 'DocumentReference',
@@ -279,6 +347,50 @@ export function DocumentUpload() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
+  }
+
+  const downloadFHIR = (doc: ProcessedDocument) => {
+    const fhirData = JSON.stringify(doc.fhirData, null, 2)
+    const blob = new Blob([fhirData], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${doc.filename}_fhir.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const exportReport = (doc: ProcessedDocument) => {
+    let report = `Medical Document Analysis Report\n`
+    report += `=====================================\n\n`
+    report += `File: ${doc.filename}\n`
+    report += `Date: ${doc.uploadDate}\n`
+    report += `Confidence: ${doc.confidence}%\n`
+    report += `Specialty: ${doc.specialty || 'General'}\n\n`
+    
+    report += `Extracted Text:\n${doc.extractedText}\n\n`
+    
+    if (doc.medicalSummary) {
+      report += `Medical Analysis:\n${doc.medicalSummary}\n\n`
+    }
+    
+    report += `Medical Entities:\n`
+    report += `- Medications: ${doc.medicalEntities.medications.join(', ')}\n`
+    report += `- Conditions: ${doc.medicalEntities.conditions.join(', ')}\n`
+    report += `- Procedures: ${doc.medicalEntities.procedures.join(', ')}\n`
+    report += `- Dates: ${doc.medicalEntities.dates.join(', ')}\n`
+    
+    const blob = new Blob([report], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${doc.filename}_report.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -593,12 +705,30 @@ export function DocumentUpload() {
                             </p>
                           </div>
                         </div>
+                        
+                        {doc.medicalSummary && (
+                          <div className="bg-gray-50 p-4 rounded-lg">
+                            <h4 className="font-medium mb-2">Medical Analysis</h4>
+                            <div className="text-sm whitespace-pre-wrap">
+                              {doc.medicalSummary}
+                            </div>
+                          </div>
+                        )}
+                        
                         <div className="flex space-x-2">
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => downloadFHIR(doc)}
+                          >
                             <Download className="h-4 w-4 mr-1" />
                             Download FHIR
                           </Button>
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => exportReport(doc)}
+                          >
                             <FileText className="h-4 w-4 mr-1" />
                             Export Report
                           </Button>
