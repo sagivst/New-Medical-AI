@@ -58,7 +58,19 @@ export function DocumentUpload() {
     try {
       let extractedText = ''
       let confidence = 95
+
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('File size too large. Maximum size is 10MB.')
+      }
+
+      const isTextFile = file.name.endsWith('.txt') || file.type === 'text/plain'
+      const isPdfFile = file.type === 'application/pdf' || file.name.endsWith('.pdf')
+      const isImageFile = file.type.startsWith('image/') || /\.(jpg|jpeg|png|tiff|gif)$/i.test(file.name)
       
+      if (!isTextFile && !isPdfFile && !isImageFile) {
+        throw new Error(`Unsupported file type: ${file.type}. Supported types: PDF, TXT, JPG, PNG, TIFF, GIF`)
+      }
+
       if (file.type === 'application/pdf') {
         const arrayBuffer = await file.arrayBuffer()
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
@@ -108,13 +120,27 @@ export function DocumentUpload() {
       return processedDoc
     } catch (error) {
       console.error('Error processing document:', error)
+      
+      let errorMessage = 'Unknown error occurred'
+      if (error instanceof Error) {
+        if (error.message.includes('InvalidPDFException') || error.message.includes('Invalid PDF')) {
+          errorMessage = 'Invalid PDF file. Please ensure the file is a valid PDF document.'
+        } else if (error.message.includes('Unsupported file type')) {
+          errorMessage = error.message
+        } else if (error.message.includes('File size too large')) {
+          errorMessage = error.message
+        } else {
+          errorMessage = `Processing failed: ${error.message}`
+        }
+      }
+      
       return {
         id: Date.now().toString(),
         filename: file.name,
         fileType: file.type || 'application/pdf',
         fileSize: (file.size / 1024).toFixed(1) + ' KB',
         uploadDate: new Date().toLocaleDateString(),
-        extractedText: `Error processing document: ${error instanceof Error ? error.message : String(error)}`,
+        extractedText: errorMessage,
         medicalEntities: {
           medications: [],
           conditions: [],
@@ -124,7 +150,8 @@ export function DocumentUpload() {
         fhirData: generateFHIRData(file, { medications: [], conditions: [], procedures: [], dates: [] }),
         confidence: 0,
         language: 'en',
-        specialty: undefined
+        specialty: undefined,
+        medicalSummary: `Error: ${errorMessage}`
       }
     }
   }
